@@ -7,6 +7,7 @@
 #include <vector>
 #include <list>
 #include <math.h>
+#include <cstring>
 #include "logger.h"
 #include "engine.h"
 #include "version.h"
