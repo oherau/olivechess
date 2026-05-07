@@ -1,2 +1,2 @@
 #include <string>
-static const std::string Version = "0.3.3";
+static const std::string Version = "@PROJECT_VERSION@";
