@@ -7,5 +7,5 @@ A free OpenSource UCI chess engine
 From the root folder:
 
 ```bash
-mkdir -p build && cd build && cmake .. && cmake --build .
+cmake -B build -S . && cmake --build build
 ```
