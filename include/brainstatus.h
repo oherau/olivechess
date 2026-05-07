@@ -6,7 +6,8 @@ enum BrainStatus
     INITIALIZING,
     PAUSED,
     THINKING,
-    QUITTING
+    QUITTING,
+    IDLE
 };
 
 #endif

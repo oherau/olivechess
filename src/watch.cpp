@@ -1,47 +1,40 @@
-#include <stdlib.h>
-#include "platform.h"
 #include "watch.h"
 
-Watch::Watch(void)
+Watch::Watch()
 {
     reset();
 }
 
 void Watch::start()
 {
-    system_time(&_startTime);
+    _startTime = Clock::now();
     _isRunning = true;
 }
 
 void Watch::stop()
 {
-    system_time(&_stopTime);
+    _stopTime = Clock::now();
     _isRunning = false;
 }
 
 void Watch::reset()
 {
-    _startTime = _stopTime;
+    _startTime = _stopTime = Clock::now();
     _isRunning = false;
 }
 
-// Get elapsed time in millisec
-uint64_t Watch::get_elapsed_time()
+// Récupère le temps écoulé en millisecondes
+uint64_t Watch::get_elapsed_time() const
 {
-    if(_isRunning)
-    {
-        sys_time_t now;
-        system_time(&now);
-        return time_to_msec(now)-time_to_msec(_startTime);
-    }
-    return time_to_msec(_stopTime)-time_to_msec(_startTime);
+    TimePoint end = _isRunning ? Clock::now() : _stopTime;
+    
+    return std::chrono::duration_cast<std::chrono::milliseconds>(end - _startTime).count();
 }
 
+// Retourne le temps actuel sous forme de graine (seed)
 uint64_t Watch::get_random_seed()
 {
-    sys_time_t now;
-    system_time(&now);
-    return time_to_msec(now);
+    return static_cast<uint64_t>(
+        std::chrono::high_resolution_clock::now().time_since_epoch().count()
+    );
 }
-
-

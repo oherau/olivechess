@@ -1,2 +1,7 @@
 #include <string>
+
+#define ENGINE_NAME    "OliveChess"
+#define ENGINE_VERSION "@PROJECT_VERSION@"
+#define ENGINE_AUTHOR  "Olivier HERAU"
+
 static const std::string Version = "@PROJECT_VERSION@";

@@ -1,139 +1,70 @@
-#include <assert.h>
-//#include "zobrist.h"
 #include "transpose.h"
+#include <cassert>
 
-
-TranspositionTable::TranspositionTable()
-{
-    resize(1); // 1 Mo by default
+TranspositionTable::TranspositionTable() {
+    resize(1); // 1 Mo par défaut
 }
 
-TranspositionTable::~TranspositionTable()
-{
+void TranspositionTable::resize(int sizeInMB) {
+    assert(sizeInMB > 0);
+    clear();
+    
+    // Calcul du nombre maximum d'éléments basé sur la taille mémoire
+    // C++20: Utilisation de size_t pour les calculs de mémoire
+    maxSize = (1048576ULL * sizeInMB) / (sizeof(Key) + sizeof(TTElem));
+    
+    // Pré-allocation pour éviter les re-hachages fréquents
+    table.reserve(maxSize);
 }
 
-/**
- * @brief Resize the transposition table
- * 
- * @param sizeInMB new size in MB
- */
-void TranspositionTable::resize(int sizeInMB)
-{
-    assert(sizeInMB>0);
-    //std::cout <<  "Resizing Transposition Table to " << sizeInMB "Mb" << std::endl;
-
-    // flush table content
-    this->clear();
-    // convert MB in bytes
-    this->maxSize = (1048576L * sizeInMB) / (sizeof(TTElem)+sizeof(Key));
-}
-
-
-void TranspositionTable::clear()
-{
-    if(!table.empty())
-        table.erase ( table.begin(), table.end() );
+void TranspositionTable::clear() {
+    table.clear();
     hits = 0;
 }
 
-
-bool TranspositionTable::lookup(const Position& p, /*int depth,*/ int height, Value* alpha, Value* beta, Value* hashvalue)
-{
-    map<Key, TTElem>::iterator result;
-    result = table.find(p.key());
-    if(result==table.end())
-        return false; // no entry found
-    if(result->second.height < height)
+bool TranspositionTable::lookup(const Position& p, int height, Value* alpha, Value* beta, Value* hashvalue) {
+    auto it = table.find(p.key());
+    
+    if (it == table.end()) {
         return false;
-
-    // entry found, update values
-    // Useless reverse
-    if(false/*((p.side_to_move()==WHITE?1:0)+depth+result->second.height+height)%2*/)
-    {
-        //std::cout <<  "WARNING !!! - odd hashtable hit" << std::endl;
-        (*alpha)      = Value(-result->second.beta);
-        (*beta)       = Value(-result->second.alpha);
-        (*hashvalue)  = Value(-result->second.bestvalue);
     }
-    else
-    {
 
-        //std::cout <<  "regular hashtable hit" << std::endl;
-        (*alpha)      = Value(result->second.alpha);
-        (*beta)       = Value(result->second.beta);
-        (*hashvalue)  = Value(result->second.bestvalue);
+    const TTElem& entry = it->second;
+
+    // On ne retourne une valeur que si la profondeur enregistrée est suffisante
+    if (entry.height < height) {
+        return false;
     }
+
+    *alpha = static_cast<Value>(entry.alpha);
+    *beta = static_cast<Value>(entry.beta);
+    *hashvalue = static_cast<Value>(entry.bestvalue);
 
     hits++;
     return true;
 }
 
-
-void TranspositionTable::store(const Position& p, /*int depth,*/ int height, Value bestvalue, Value alpha, Value beta)
-{
+void TranspositionTable::store(const Position& p, int height, Value bestvalue, Value alpha, Value beta) {
     Key key = p.key();
-    map<Key, TTElem>::iterator result;
-    result = table.find(key);
-    if(result==table.end())
-    {
-        // no entry, always store
-        //TTElem elem = {depth,bestvalue,alpha,beta};
-        TTElem elem = {height,bestvalue,alpha,beta};
-        table[key] = elem;
-        if(table.size() > maxSize) table.erase(table.begin());
-    }
-    else
-    {
-        // entry found, update only deeper results
-        if(result->second.height < height)
-        {
-            result->second.height = height;
-            // Useless reverse
-            if(false /*((p.side_to_move()==WHITE?1:0)+depth+height)%2*/)
-            {
-                result->second.alpha = -beta;
-                result->second.beta  = -alpha;
-                result->second.bestvalue = -bestvalue;
-            }
-            else
-            {
-                result->second.alpha = alpha;
-                result->second.beta  = beta;
-                result->second.bestvalue = bestvalue;
-            }
+    auto it = table.find(key);
+
+    if (it == table.end()) {
+        // Nouvelle entrée
+        if (table.size() >= maxSize) {
+            // Stratégie simple de remplacement : on vide si plein (ou on pourrait effacer une entrée aléatoire)
+            // Dans un moteur pro, on utilise souvent un index fixe au lieu d'un map.
+            table.clear(); 
+        }
+        table[key] = {height, static_cast<int>(bestvalue), static_cast<int>(alpha), static_cast<int>(beta)};
+    } else {
+        // Mise à jour si la nouvelle recherche est plus profonde
+        if (it->second.height < height) {
+            it->second = {height, static_cast<int>(bestvalue), static_cast<int>(alpha), static_cast<int>(beta)};
         }
     }
 }
 
-
-unsigned int TranspositionTable::GetUsagePerMil()
-{
-    return  (1000L * (unsigned long)table.size()) / maxSize;
+uint32_t TranspositionTable::GetUsagePerMil() const {
+    if (maxSize == 0) return 0;
+    return static_cast<uint32_t>((1000ULL * table.size()) / maxSize);
 }
-
-
-unsigned long TranspositionTable::GetHits()
-{
-    return hits;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
